@@ -14,6 +14,11 @@ public class TaskScheduler {
     public static void main(String... args) {
         logger.info("任务管理器开始执行...");
 
+//        try {
+//            Thread.sleep(1000000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
         logger.info("任务管理器运行结束...");
     }

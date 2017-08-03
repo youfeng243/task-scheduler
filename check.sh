@@ -13,7 +13,7 @@ check() {
 }
 
 if [ $# == 2 ]; then
-    echo $(check $1 $2)
+    check $1 $2
 else
-    echo $(check ${project} ${main_class})
+    check ${project} ${main_class}
 fi
