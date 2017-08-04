@@ -50,7 +50,7 @@ public class KafkaClientConsumer {
                 if (records.count() > 0) {
                     logger.info("kafka 中读取的数据数目为: count = {}", records.count());
                     for (ConsumerRecord<String, String> record : records) {
-                        logger.info("{}:{}", record.key(), record.value());
+                        logger.info("{} : {}", record.key(), record.value());
                     }
                 }
                 consumer.commitSync();
