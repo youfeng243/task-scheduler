@@ -17,6 +17,12 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>0.10.0.1</version>
+        </dependency>
+
         <!--*************************drools config*******************************************-->
         <!-- https://mvnrepository.com/artifact/org.kie/kie-api -->
         <dependency>
