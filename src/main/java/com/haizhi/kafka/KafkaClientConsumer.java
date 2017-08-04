@@ -43,8 +43,8 @@ public class KafkaClientConsumer {
 
     public void runTask() {
         logger.info("开始消费数据...");
-        consumer.subscribe(topics);
         try {
+            consumer.subscribe(topics);
             while (true) {
                 ConsumerRecords<String, String> records = consumer.poll(pullTimeout);
                 if (records.count() > 0) {
