@@ -57,29 +57,22 @@ public class AppDataProducer implements Callable<Void> {
     @Override
     public Void call() throws Exception {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "cs6:9092");
+        props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
         props.put("acks", "all");
         props.put("retries", 0);
         props.put("batch.size", 16384);
         props.put("linger.ms", 1);
         props.put("buffer.memory", 33554432);
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("key.serializer", PropertyUtil.getProperty("key.serializer"));
+        props.put("value.serializer", PropertyUtil.getProperty("value.serializer"));
 
         String topic = PropertyUtil.getProperty("kafka.topics");
-
         Producer<String, String> producer = new KafkaProducer<>(props);
 
         MongoCursor<Document> cursor = appDataDatabase.getCollection(tableName).find().iterator();
         while (cursor.hasNext()) {
 
             Document document = cursor.next();
-
-//            String _record_id = document.getString("_record_id");
-//            if (_record_id == null || Objects.equals(_record_id, "")) {
-//                logger.error("没有_record_id: {}", document);
-//                continue;
-//            }
 
             logger.info("{} : {}", tableName, document);
 
