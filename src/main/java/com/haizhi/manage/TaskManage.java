@@ -1,4 +1,4 @@
-package com.haizhi;
+package com.haizhi.manage;
 
 /**
  * Created by youfeng on 2017/8/4.
