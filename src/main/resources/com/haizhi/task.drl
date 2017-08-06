@@ -7,12 +7,12 @@ global com.haizhi.kafka.KafkaClientConsumer kafkaClient
 
 rule "kafka"
 when
-    task: TaskManage()
+    task: TaskManage(task_status == KAFKA_STATUS)
 then
     ConsumerRecords<String, String> records = kafkaClient.runTask();
     for (ConsumerRecord<String, String> record : records) {
 
-        System.out.println( record.key() + ":" + record.value());
+        //System.out.println( record.key() + ":" + record.value());
         String key = record.key();
         String[] keys = key.split("#");
 
@@ -28,7 +28,24 @@ then
 
         // 计数增加
         task.incTableNum(tableName, 1);
+
+        if(task.getTableList().size() > 0) {
+            task.setStatus(TaskManage.CLEAN_STATUS);
+        }
     }
 
+    update(task)
+end
+
+rule "clean"
+when
+    task: TaskManage(task_status == CLEAN_STATUS)
+then
+    System.out.println("进入清洗流程..");
+
+    //这里把HBase中的数据从增量区读出放入全量区
+    task.transfer();
+
+    task.setStatus(TaskManage.KAFKA_STATUS);
     update(task)
 end

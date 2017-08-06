@@ -267,6 +267,23 @@ public class HBaseDao {
         return table.getScanner(scan);
     }
 
+    // 获取所有数据
+    public  ResultScanner getAllRows(Table table) throws Exception {
+
+        if (!isInitSuccess) {
+            logger.error("HBase未初始化...");
+            return null;
+        }
+
+        //判断表是否存在
+        if (!isTableExist(table)) {
+            logger.warn("表不存在: {}", table.getName().getNameAsString());
+            return null;
+        }
+        Scan scan = new Scan();
+        return table.getScanner(scan);
+    }
+
 //    public List<String> getFilterTableNameList(String filter) {
 //        List<String> recordTableList = getTableNameList().
 //                parallelStream().

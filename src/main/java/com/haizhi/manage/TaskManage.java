@@ -2,6 +2,10 @@ package com.haizhi.manage;
 
 import com.haizhi.hbase.HBaseDao;
 import com.haizhi.util.PropertyUtil;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,11 +24,20 @@ public class TaskManage {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskManage.class);
 
+    //kafka接收数据状态
+    public static final int KAFKA_STATUS = 0;
+
+    //清理状态
+    public static final int CLEAN_STATUS = 1;
+
+    //当前状态
+    public int task_status = KAFKA_STATUS;
+
     //family
     private static final String COLUMN_FAMILY = "data";
 
     //kafka数据消费阈值
-    private static final int MAX_KAFKA_NUM = 100;
+    private static final int MAX_KAFKA_NUM = 10;
 
     // kafka中统计的数据数目
     //private int kafkaCount = 0;
@@ -54,6 +67,10 @@ public class TaskManage {
         hBaseDao = new HBaseDao(quorum, clientPort, master);
         createHBaseNameSpace(wholeSpace.split(":")[0]);
         createHBaseNameSpace(increaseSpace.split(":")[0]);
+    }
+
+    public void setStatus(int status) {
+        task_status = status;
     }
 
     //增加表数据数目
@@ -99,6 +116,18 @@ public class TaskManage {
         }
     }
 
+//    //获得表
+//    public Table getIncreaseTable(String table) {
+//        String tableName = increaseSpace + table;
+//
+//        try {
+//            return hBaseDao.getTable(tableName);
+//        } catch (IOException e) {
+//            logger.error("获取表信息失败:", e);
+//        }
+//        return null;
+//    }
+
     //添加数据到增量区
     public void addIncData(String rowkey, String key, String value) {
         String tableName = increaseSpace + key;
@@ -107,7 +136,21 @@ public class TaskManage {
             Table table = hBaseDao.getTable(tableName);
             hBaseDao.addRow(table, rowkey, COLUMN_FAMILY, key, value);
             table.close();
-            logger.info("添加数据成功: {} {} {}", rowkey, key, value);
+            logger.info("添加数据到增量区成功: {} {} {}", rowkey, key, value);
+        } catch (Exception e) {
+            logger.error("写入数据异常:", e);
+        }
+    }
+
+    //添加数据到全量区
+    public void addWholeData(String rowkey, String key, String value) {
+        String tableName = wholeSpace + key;
+        createTable(tableName);
+        try {
+            Table table = hBaseDao.getTable(tableName);
+            hBaseDao.addRow(table, rowkey, COLUMN_FAMILY, key, value);
+            table.close();
+            logger.info("添加数据到全量区成功: {} {} {}", rowkey, key, value);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }
@@ -122,6 +165,54 @@ public class TaskManage {
         } catch (Exception e) {
             logger.error("删除表异常:", e);
         }
+    }
+
+    //从增量区把数据存入全量区
+    public void transfer() {
+        List<String> tableList = getTableList();
+        if (tableList.size() <= 0) {
+            logger.error("没有需要转移数据的表信息...");
+            return;
+        }
+
+        //清除数据记录状态
+        for (String tableName : tableList) {
+
+            //增量区表名称
+            String incTableName = increaseSpace + tableName;
+
+            try {
+                Table table = hBaseDao.getTable(incTableName);
+                //这里转移数据
+                ResultScanner resultScanner = hBaseDao.getAllRows(table);
+                if (resultScanner == null) {
+                    table.close();
+                    clearTableNum(tableName);
+                    logger.error("ResultScanner获取失败..");
+                    continue;
+                }
+
+                for (Result result : resultScanner) {
+                    for (Cell cell : result.rawCells()) {
+                        String rowkey = new String(CellUtil.cloneRow(cell));
+                        String column = new String(CellUtil.cloneQualifier(cell));
+                        String value = new String(CellUtil.cloneValue(cell));
+
+                        // 把数据插入全量区
+                        addWholeData(rowkey, column, value);
+
+                        //从增量区删除数据
+                        hBaseDao.delRow(table, rowkey);
+                    }
+                }
+                table.close();
+                clearTableNum(tableName);
+            } catch (Exception e) {
+                logger.error("读取表信息异常:", e);
+            }
+        }
+
+        logger.info("数据从增量区转移到全量区完成...");
     }
 
     //获得达到阈值的列表信息

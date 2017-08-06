@@ -81,7 +81,7 @@ public class AppDataProducer implements Callable<Void> {
 
             producer.send(new ProducerRecord<>(topic, key, document.toJson()));
             try {
-                Thread.sleep(3000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 logger.error("休眠异常:", e);
             }
