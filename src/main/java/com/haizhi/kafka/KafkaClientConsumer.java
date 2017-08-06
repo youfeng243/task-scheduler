@@ -1,7 +1,6 @@
 package com.haizhi.kafka;
 
 import com.haizhi.util.PropertyUtil;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.slf4j.Logger;
@@ -38,29 +37,18 @@ public class KafkaClientConsumer {
         this.pullTimeout = Long.valueOf(PropertyUtil.getProperty("poll.timeout"));
         consumer = new KafkaConsumer<>(props);
 
+        consumer.subscribe(topics);
         logger.info("初始化kafka完成...");
     }
 
-    public void runTask() {
-        logger.info("开始消费数据...");
-        try {
-            consumer.subscribe(topics);
-            while (true) {
-                ConsumerRecords<String, String> records = consumer.poll(pullTimeout);
-                if (records.count() > 0) {
-                    logger.info("kafka 中读取的数据数目为: count = {}", records.count());
-                    for (ConsumerRecord<String, String> record : records) {
-                        logger.info("{} : {}", record.key(), record.value());
-                    }
-                }
-                consumer.commitSync();
-            }
-        } catch (Exception e) {
-            logger.error("消费kafka数据失败...", e);
-        } finally {
-            this.consumer.commitSync();
-            this.consumer.close();
-        }
+    public ConsumerRecords<String, String> runTask() {
+        ConsumerRecords<String, String> records = consumer.poll(pullTimeout);
+        consumer.commitSync();
+        return records;
+    }
 
+    //关闭kafka
+    public void close() {
+        consumer.close();
     }
 }

@@ -1,0 +1,34 @@
+import com.haizhi.manage.TaskManage
+import com.haizhi.kafka.KafkaClientConsumer
+import org.apache.kafka.clients.consumer.ConsumerRecords
+import org.apache.kafka.clients.consumer.ConsumerRecord
+
+global com.haizhi.kafka.KafkaClientConsumer kafkaClient
+
+rule "kafka"
+when
+    task: TaskManage()
+then
+    ConsumerRecords<String, String> records = kafkaClient.runTask();
+    for (ConsumerRecord<String, String> record : records) {
+
+        System.out.println( record.key() + ":" + record.value());
+        String key = record.key();
+        String[] keys = key.split("#");
+
+        if (keys.length < 2) {
+            continue;
+        }
+        String tableName = keys[0];
+        String _record_id = keys[1];
+        String docJson = record.value();
+
+        // 存入增量区
+        task.addIncData(_record_id, tableName, docJson);
+
+        // 计数增加
+        task.incTableNum(tableName, 1);
+    }
+
+    update(task)
+end

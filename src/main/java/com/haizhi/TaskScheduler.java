@@ -1,7 +1,11 @@
 package com.haizhi;
 
 import com.haizhi.kafka.KafkaClientConsumer;
+import com.haizhi.manage.TaskManage;
 import com.haizhi.util.PropertyUtil;
+import org.kie.api.KieServices;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,19 +23,19 @@ public class TaskScheduler {
         PropertyUtil.loadProperties("application.properties");
     }
 
-
     public static void main(String... args) {
         logger.info("任务管理器开始执行...");
 
-        //开始消费数据
-        new KafkaClientConsumer().runTask();
+        KieServices ks = KieServices.Factory.get();
+        KieContainer kContainer = ks.getKieClasspathContainer();
+        KieSession kSession = kContainer.newKieSession("session-task");
 
-//        try {
-//            Thread.sleep(1000000);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
+        kSession.setGlobal("kafkaClient",
+                new KafkaClientConsumer());
 
+        //kSession.setGlobal("logger", LoggerFactory.getLogger(TaskScheduler.class));
+        kSession.insert(new TaskManage());
+        kSession.fireUntilHalt();
         logger.info("任务管理器运行结束...");
     }
 }

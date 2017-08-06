@@ -74,9 +74,12 @@ public class AppDataProducer implements Callable<Void> {
 
             Document document = cursor.next();
 
-            logger.info("{} : {}", tableName, document);
+            String _record_id = document.getString("_record_id");
+            String key = tableName + "#" + _record_id;
 
-            producer.send(new ProducerRecord<>(topic, tableName, document.toJson()));
+            logger.info("{} : {}", key, document);
+
+            producer.send(new ProducerRecord<>(topic, key, document.toJson()));
             try {
                 Thread.sleep(3000);
             } catch (InterruptedException e) {
