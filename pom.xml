@@ -192,6 +192,11 @@
                                     <mainClass>com.haizhi.TaskScheduler</mainClass>
                                     <name>startup.sh</name>
                                 </program>
+
+                                <program>
+                                    <mainClass>com.haizhi.test.AppDataProducer</mainClass>
+                                    <name>AppDataProducer.sh</name>
+                                </program>
                             </programs>
                         </configuration>
                     </execution>
