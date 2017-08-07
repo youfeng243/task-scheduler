@@ -65,8 +65,8 @@ public class AppDataProducer implements Callable<Void> {
         props.put("buffer.memory", 33554432);
         props.put("key.serializer", PropertyUtil.getProperty("key.serializer"));
         props.put("value.serializer", PropertyUtil.getProperty("value.serializer"));
+        //props.put("auto.create.topics.enable", "true");
 
-        String topic = PropertyUtil.getProperty("kafka.topics");
         Producer<String, String> producer = new KafkaProducer<>(props);
 
         MongoCursor<Document> cursor = appDataDatabase.getCollection(tableName).find().iterator();
@@ -75,11 +75,10 @@ public class AppDataProducer implements Callable<Void> {
             Document document = cursor.next();
 
             String _record_id = document.getString("_record_id");
-            String key = tableName + "#" + _record_id;
 
-            logger.info("{} : {}", key, document);
+            logger.info("{} : {} : {}", tableName, _record_id, document);
 
-            producer.send(new ProducerRecord<>(topic, key, document.toJson()));
+            producer.send(new ProducerRecord<>(tableName, _record_id, document.toJson()));
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -98,6 +97,7 @@ public class AppDataProducer implements Callable<Void> {
         threadPool.submit(new AppDataProducer("enterprise_data_gov"));
         threadPool.submit(new AppDataProducer("annual_reports"));
 
+        threadPool.shutdown();
         logger.info("线程已经加载完成，等待结束...");
         try {
             threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);

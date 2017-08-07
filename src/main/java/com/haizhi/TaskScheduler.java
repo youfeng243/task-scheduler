@@ -9,6 +9,12 @@ import org.kie.api.runtime.KieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Created by youfeng on 2017/8/3.
  * 任务管理器入口文件
@@ -23,19 +29,53 @@ public class TaskScheduler {
         PropertyUtil.loadProperties("application.properties");
     }
 
-    public static void main(String... args) {
-        logger.info("任务管理器开始执行...");
-
+    public TaskScheduler(String topic) {
         KieServices ks = KieServices.Factory.get();
         KieContainer kContainer = ks.getKieClasspathContainer();
         KieSession kSession = kContainer.newKieSession("session-task");
 
         kSession.setGlobal("kafkaClient",
-                new KafkaClientConsumer());
+                new KafkaClientConsumer(topic));
 
         //kSession.setGlobal("logger", LoggerFactory.getLogger(TaskScheduler.class));
-        kSession.insert(new TaskManage());
+        kSession.insert(new TaskManage(topic));
         kSession.fireUntilHalt();
+    }
+
+    public static void main(String... args) {
+        logger.info("任务管理器开始执行...");
+
+        String topics = PropertyUtil.getProperty("kafka.topics");
+        List<String> topicList = Arrays.asList(topics.split(","));
+
+        ExecutorService pool = Executors.newFixedThreadPool(topicList.size());
+        for (final String topic : topicList) {
+            pool.submit(new Runnable() {
+                @Override
+                public void run() {
+                    new TaskScheduler(topic);
+                }
+            });
+        }
+
+        pool.shutdown();
+        try {
+            logger.info("开始等待所有线程完成....");
+            pool.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            logger.error("ERROR", e);
+        }
+
+//        KieServices ks = KieServices.Factory.get();
+//        KieContainer kContainer = ks.getKieClasspathContainer();
+//        KieSession kSession = kContainer.newKieSession("session-task");
+//
+//        kSession.setGlobal("kafkaClient",
+//                new KafkaClientConsumer());
+//
+//        //kSession.setGlobal("logger", LoggerFactory.getLogger(TaskScheduler.class));
+//        kSession.insert(new TaskManage());
+//        kSession.fireUntilHalt();
         logger.info("任务管理器运行结束...");
     }
 }

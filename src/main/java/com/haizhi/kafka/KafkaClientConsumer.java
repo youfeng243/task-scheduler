@@ -6,7 +6,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -23,7 +23,7 @@ public class KafkaClientConsumer {
     private final List<String> topics;
     private long pullTimeout;
 
-    public KafkaClientConsumer() {
+    public KafkaClientConsumer(String topic) {
         Properties props = new Properties();
         props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
         props.put("group.id", PropertyUtil.getProperty("kafka.group.id"));
@@ -31,9 +31,9 @@ public class KafkaClientConsumer {
         props.put("value.deserializer", PropertyUtil.getProperty("value.deserializer"));
         props.put("enable.auto.commit", "false");
 
-        String inputTopic = PropertyUtil.getProperty("kafka.topics");
+        //String inputTopic = PropertyUtil.getProperty("kafka.topics");
 
-        this.topics = Arrays.asList(inputTopic.split(","));
+        this.topics = Collections.singletonList(topic);
         this.pullTimeout = Long.valueOf(PropertyUtil.getProperty("poll.timeout"));
         consumer = new KafkaConsumer<>(props);
 
