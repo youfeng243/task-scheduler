@@ -23,10 +23,10 @@ public class KafkaClientConsumer {
     private final List<String> topics;
     private long pullTimeout;
 
-    public KafkaClientConsumer(String topic) {
+    public KafkaClientConsumer(String topic, String groupId) {
         Properties props = new Properties();
         props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
-        props.put("group.id", PropertyUtil.getProperty("kafka.group.id"));
+        props.put("group.id", groupId);
         props.put("key.deserializer", PropertyUtil.getProperty("key.deserializer"));
         props.put("value.deserializer", PropertyUtil.getProperty("value.deserializer"));
         props.put("enable.auto.commit", "false");

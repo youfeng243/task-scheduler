@@ -33,29 +33,35 @@ public class TaskScheduler implements Callable<Void> {
     //引擎句柄
     private KieSession kSession;
 
-    public TaskScheduler(String topic) {
+    public TaskScheduler(String topic, String groupId, int maxKafkaNum) {
         // 这里要加锁
         KieServices ks = KieServices.Factory.get();
         KieContainer kContainer = ks.getKieClasspathContainer();
         kSession = kContainer.newKieSession("session-task");
 
         kSession.setGlobal("kafkaClient",
-                new KafkaClientConsumer(topic));
+                new KafkaClientConsumer(topic, groupId));
 
         //kSession.setGlobal("logger", LoggerFactory.getLogger(TaskScheduler.class));
-        kSession.insert(new TaskManage(topic));
+        kSession.insert(new TaskManage(topic, maxKafkaNum));
     }
 
     public static void main(String... args) {
         logger.info("任务管理器开始执行...");
 
         String topics = PropertyUtil.getProperty("kafka.topics");
+        String maxKafkaNums = PropertyUtil.getProperty("kafka.max.consume.num");
+        String groupIds = PropertyUtil.getProperty("kafka.group.id");
         List<String> topicList = Arrays.asList(topics.split(","));
+        List<String> maxKafkaList = Arrays.asList(maxKafkaNums.split(","));
+        List<String> groupIdList = Arrays.asList(groupIds.split(","));
 
         logger.info("当前启动的线程数目: {}", topicList.size());
         ExecutorService pool = Executors.newFixedThreadPool(topicList.size());
-        for (final String topic : topicList) {
-            pool.submit(new TaskScheduler(topic));
+        for (int index = 0; index < topicList.size(); index++) {
+            pool.submit(new TaskScheduler(topicList.get(index),
+                    groupIdList.get(index),
+                    Integer.valueOf(maxKafkaList.get(index))));
         }
 
         pool.shutdown();

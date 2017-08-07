@@ -79,11 +79,11 @@ public class AppDataProducer implements Callable<Void> {
             logger.info("{} : {} : {}", tableName, _record_id, document);
 
             producer.send(new ProducerRecord<>(tableName, _record_id, document.toJson()));
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                logger.error("休眠异常:", e);
-            }
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException e) {
+//                logger.error("休眠异常:", e);
+//            }
         }
 
         cursor.close();

@@ -26,8 +26,11 @@ public class TaskManage {
     //kafka数据消费阈值
     public static final int MAX_KAFKA_NUM = 10;
 
+    //kafka实际消费阈值
+    private int maxKafkaNum;
+
     // kafka中统计的数据数目
-    public int kafkaCount = 0;
+    private int kafkaCount = 0;
 
     // 全量区
     private String wholeSpace;
@@ -44,13 +47,15 @@ public class TaskManage {
     private Table wholeTable;
     private Table increaseTable;
 
-    public TaskManage(String tableName) {
+    public TaskManage(String tableName, int maxKafkaNum) {
         wholeSpace = PropertyUtil.getProperty("whole.change.flag");
         increaseSpace = PropertyUtil.getProperty("increase.change.flag");
 
         logger.info("当前需要流转数据的表: {}", tableName);
+        logger.info("当前kafka消费阈值: {}", maxKafkaNum);
 
         this.tableName = tableName;
+        this.maxKafkaNum = maxKafkaNum;
 
         String quorum = PropertyUtil.getProperty("hbase.zookeeper.quorum");
         String clientPort = PropertyUtil.getProperty("hbase.zookeeper.property.clientPort");
@@ -72,6 +77,22 @@ public class TaskManage {
             logger.error("创建表信息: ", e);
         }
 
+    }
+
+    public int getMaxKafkaNum() {
+        return maxKafkaNum;
+    }
+
+    public void setMaxKafkaNum(int maxKafkaNum) {
+        this.maxKafkaNum = maxKafkaNum;
+    }
+
+    public int getKafkaCount() {
+        return kafkaCount;
+    }
+
+    public void setKafkaCount(int kafkaCount) {
+        this.kafkaCount = kafkaCount;
     }
 
     //增加表数据数目
@@ -98,7 +119,7 @@ public class TaskManage {
     public void addIncData(String rowkey, String value) {
         try {
             hBaseDao.addRow(increaseTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("增量区: {} {} {}", tableName, rowkey, value);
+            logger.debug("增量区: {} {} {}", tableName, rowkey, value);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }
@@ -108,7 +129,7 @@ public class TaskManage {
     public void addWholeData(String rowkey, String value) {
         try {
             hBaseDao.addRow(wholeTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("全量区: {} {} {}", tableName, rowkey, value);
+            logger.debug("全量区: {} {} {}", tableName, rowkey, value);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }

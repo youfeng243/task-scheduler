@@ -7,7 +7,7 @@ global com.haizhi.kafka.KafkaClientConsumer kafkaClient
 
 rule "kafka"
 when
-    task: TaskManage(kafkaCount < MAX_KAFKA_NUM)
+    task: TaskManage(kafkaCount < maxKafkaNum)
 then
     ConsumerRecords<String, String> records = kafkaClient.runTask();
     for (ConsumerRecord<String, String> record : records) {
@@ -26,7 +26,7 @@ end
 
 rule "clean"
 when
-    task: TaskManage(kafkaCount >= MAX_KAFKA_NUM)
+    task: TaskManage(kafkaCount >= maxKafkaNum)
 then
     //这里把HBase中的数据从增量区读出放入全量区
     task.transfer();
