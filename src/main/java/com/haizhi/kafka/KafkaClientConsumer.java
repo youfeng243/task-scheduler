@@ -27,6 +27,8 @@ public class KafkaClientConsumer {
         Properties props = new Properties();
         props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
         props.put("group.id", groupId);
+        props.put("session.timeout.ms", "30000");
+        props.put("auto.offset.reset", "earliest");
         props.put("key.deserializer", PropertyUtil.getProperty("key.deserializer"));
         props.put("value.deserializer", PropertyUtil.getProperty("value.deserializer"));
         props.put("enable.auto.commit", "false");
