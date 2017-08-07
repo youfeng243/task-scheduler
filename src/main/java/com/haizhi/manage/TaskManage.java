@@ -48,6 +48,8 @@ public class TaskManage {
         wholeSpace = PropertyUtil.getProperty("whole.change.flag");
         increaseSpace = PropertyUtil.getProperty("increase.change.flag");
 
+        logger.info("当前需要流转数据的表: {}", tableName);
+
         this.tableName = tableName;
 
         String quorum = PropertyUtil.getProperty("hbase.zookeeper.quorum");
@@ -96,7 +98,7 @@ public class TaskManage {
     public void addIncData(String rowkey, String value) {
         try {
             hBaseDao.addRow(increaseTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("添加数据到增量区成功: {} {} {}", rowkey, tableName, value);
+            logger.info("增量区: {} {} {}", tableName, rowkey, value);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }
@@ -106,7 +108,7 @@ public class TaskManage {
     public void addWholeData(String rowkey, String value) {
         try {
             hBaseDao.addRow(wholeTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("添加数据到全量区成功: {} {} {}", rowkey, tableName, value);
+            logger.info("全量区: {} {} {}", tableName, rowkey, value);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }
@@ -119,6 +121,8 @@ public class TaskManage {
             logger.error("数据量没有达到，不需要清洗...");
             return;
         }
+
+        logger.info("开始转移数据到全量区...table = {}", tableName);
 
         //这里转移数据
         try {
@@ -147,6 +151,6 @@ public class TaskManage {
         //清空状态
         clearKafkaCount();
 
-        logger.info("数据从增量区转移到全量区完成...");
+        logger.info("数据从增量区转移到全量区完成...table = {}", tableName);
     }
 }

@@ -28,8 +28,6 @@ rule "clean"
 when
     task: TaskManage(kafkaCount >= MAX_KAFKA_NUM)
 then
-    System.out.println("进入清洗流程..");
-
     //这里把HBase中的数据从增量区读出放入全量区
     task.transfer();
 
