@@ -119,7 +119,7 @@ public class TaskManage {
     public void addIncData(String rowkey, String value) {
         try {
             hBaseDao.addRow(increaseTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("增量区: {} {} {}", tableName, rowkey, value);
+            logger.info("增量区: {} {} ", tableName, rowkey);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }
@@ -129,7 +129,7 @@ public class TaskManage {
     public void addWholeData(String rowkey, String value) {
         try {
             hBaseDao.addRow(wholeTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("全量区: {} {} {}", tableName, rowkey, value);
+            logger.info("全量区: {} {} ", tableName, rowkey);
         } catch (Exception e) {
             logger.error("写入数据异常:", e);
         }

@@ -76,7 +76,7 @@ public class AppDataProducer implements Callable<Void> {
 
             String _record_id = document.getString("_record_id");
 
-            logger.info("{} : {} : {}", tableName, _record_id, document);
+            logger.info("{} : {} ", tableName, _record_id);
 
             producer.send(new ProducerRecord<>(tableName, _record_id, document.toJson()));
 //            try {
