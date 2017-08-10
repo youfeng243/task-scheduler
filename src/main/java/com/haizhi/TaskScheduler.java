@@ -47,6 +47,10 @@ public class TaskScheduler implements Callable<Void> {
     }
 
     public static void main(String... args) {
+
+        int availProcessors = Runtime.getRuntime().availableProcessors();
+        logger.info("当前CPU数目: {}", availProcessors);
+
         logger.info("任务管理器开始执行...");
 
         String topics = PropertyUtil.getProperty("kafka.topics");
