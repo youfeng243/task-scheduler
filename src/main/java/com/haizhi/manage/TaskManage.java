@@ -84,14 +84,16 @@ public class TaskManage {
             return;
         }
 
-        //判断是否已经添加过数据
-        if (!tableSet.contains(topic)) {
-            kSession.insert(new DataTask(topic, hBaseDao));
-            tableSet.add(topic);
-        }
-
         //转发消息
         kafkaProducer.send(topic, key, value);
+
+        //判断是否已经添加过数据
+        if (!tableSet.contains(topic)) {
+            tableSet.add(topic);
+            kSession.insert(new DataTask(topic, hBaseDao));
+            kSession.fireAllRules();
+            logger.info("添加新的消息处理对象: {}", topic);
+        }
     }
 
     public void consumerData() {
@@ -105,7 +107,7 @@ public class TaskManage {
             //实时消息
             if (Objects.equals(key, REAL_TIME_MSG)) {
                 kafkaProducer.send(realTimeTopic, key, value);
-                logger.info("转发实时消息: {} : {}", key, value);
+                //logger.info("转发实时消息: {} : {}", key, value);
                 continue;
             }
 
