@@ -139,6 +139,8 @@ public class DataTask {
             return;
         }
 
+        logger.info("开始消费数据: {}", tableName);
+
         List<Put> putList = new ArrayList<>();
         for (ConsumerRecord<String, String> record : records) {
             String _record_id = record.key();
@@ -161,12 +163,14 @@ public class DataTask {
         if (currentNum >= maxConsumerNum) {
             // 如果消费数量达到一定程度，则进入清洗流程...
             status = STATUS_CLEAN;
+            logger.info("数据量超过 {} 进入清洗状态", currentNum);
         }
     }
 
     // 清洗流程
     public void cleanData() {
 
+        logger.info("进入清洗状态: {}", tableName);
         executorService.submit(new Runnable() {
             @Override
             public void run() {
@@ -219,7 +223,7 @@ public class DataTask {
                 currentNum = 0;
                 status = STATUS_CONSUMER;
 
-                logger.info("清理状态完成..");
+                logger.info("清理状态完成..{}", tableName);
             }
         });
         // 清理中..

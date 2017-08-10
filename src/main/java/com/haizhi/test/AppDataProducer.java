@@ -1,6 +1,7 @@
 package com.haizhi.test;
 
 import com.haizhi.mongo.Mongo;
+import com.haizhi.util.JsonUtil;
 import com.haizhi.util.PropertyUtil;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -11,6 +12,8 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -54,6 +57,15 @@ public class AppDataProducer implements Callable<Void> {
         appDataDatabase = appDataMongo.getDb(PropertyUtil.getProperty("data.mongo.database"));
     }
 
+    private String getDataMsg(String head, String content, String _record_id) {
+        //{ "head": "enterprise_data_gov", "content": Document().Json(), _record_id:"0aaea4e23e84b6a64de37fd8ce249555" }
+        Map<String, String> msg = new HashMap<>();
+        msg.put("head", head);
+        msg.put("content", content);
+        msg.put("_record_id", _record_id);
+        return JsonUtil.objectToJson(msg);
+    }
+
     @Override
     public Void call() throws Exception {
         Properties props = new Properties();
@@ -66,6 +78,7 @@ public class AppDataProducer implements Callable<Void> {
         props.put("key.serializer", PropertyUtil.getProperty("key.serializer"));
         props.put("value.serializer", PropertyUtil.getProperty("value.serializer"));
         //props.put("auto.create.topics.enable", "true");
+        String topic = PropertyUtil.getProperty("kafka.data.topic");
 
         Producer<String, String> producer = new KafkaProducer<>(props);
 
@@ -78,12 +91,14 @@ public class AppDataProducer implements Callable<Void> {
 
             logger.info("{} : {} ", tableName, _record_id);
 
-            producer.send(new ProducerRecord<>(tableName, _record_id, document.toJson()));
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                logger.error("休眠异常:", e);
-//            }
+            producer.send(new ProducerRecord<>(topic, "data_msg", getDataMsg(tableName, document.toJson(), _record_id)));
+            producer.send(new ProducerRecord<>(topic, "event_msg", "test_msg"));
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                logger.error("休眠异常:", e);
+            }
         }
 
         cursor.close();
