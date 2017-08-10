@@ -105,6 +105,7 @@ public class TaskManage {
             //实时消息
             if (Objects.equals(key, REAL_TIME_MSG)) {
                 kafkaProducer.send(realTimeTopic, key, value);
+                logger.info("转发实时消息: {} : {}", key, value);
                 continue;
             }
 
