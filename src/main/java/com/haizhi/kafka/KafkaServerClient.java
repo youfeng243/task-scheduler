@@ -3,54 +3,38 @@ package com.haizhi.kafka;
 import com.haizhi.util.PropertyUtil;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
 /**
- * Created by youfeng on 2017/8/4.
+ * Created by youfeng on 2017/8/10.
  * kafka消费者
  */
-public class KafkaClientConsumer {
+public class KafkaServerClient {
 
-    private static final Logger logger = LoggerFactory.getLogger(KafkaClientConsumer.class);
+    private final long pullTimeout;
 
     private final KafkaConsumer<String, String> consumer;
 
-    private final List<String> topics;
-    private long pullTimeout;
-
-    public KafkaClientConsumer(String topic, String groupId) {
+    public KafkaServerClient(String topic) {
         Properties props = new Properties();
         props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
-        props.put("group.id", groupId);
+        props.put("group.id", topic);
         props.put("session.timeout.ms", "30000");
         props.put("auto.offset.reset", "earliest");
         props.put("key.deserializer", PropertyUtil.getProperty("key.deserializer"));
         props.put("value.deserializer", PropertyUtil.getProperty("value.deserializer"));
         props.put("enable.auto.commit", "false");
 
-        //String inputTopic = PropertyUtil.getProperty("kafka.topics");
-
-        this.topics = Collections.singletonList(topic);
         this.pullTimeout = Long.valueOf(PropertyUtil.getProperty("poll.timeout"));
         consumer = new KafkaConsumer<>(props);
-
-        consumer.subscribe(topics);
-        logger.info("初始化kafka完成...");
+        consumer.subscribe(Collections.singletonList(topic));
     }
 
-    public ConsumerRecords<String, String> runTask() {
+    public ConsumerRecords<String, String> consumerData() {
         ConsumerRecords<String, String> records = consumer.poll(pullTimeout);
         consumer.commitSync();
         return records;
-    }
-
-    //关闭kafka
-    public void close() {
-        consumer.close();
     }
 }

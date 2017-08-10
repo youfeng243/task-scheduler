@@ -1,16 +1,20 @@
 package com.haizhi.manage;
 
 import com.haizhi.hbase.HBaseDao;
+import com.haizhi.kafka.KafkaServerClient;
+import com.haizhi.kafka.KafkaServerProducer;
+import com.haizhi.util.JsonUtil;
 import com.haizhi.util.PropertyUtil;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Table;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.kie.api.runtime.KieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Created by youfeng on 2017/8/4.
@@ -20,158 +24,99 @@ public class TaskManage {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskManage.class);
 
-    //family
-    private static final String COLUMN_FAMILY = "data";
+    //实时消息
+    private static final String REAL_TIME_MSG = "event_msg";
 
-    //kafka数据消费阈值
-    public static final int MAX_KAFKA_NUM = 10;
+    //数据消息
+    private static final String DATA_MSG = "data_msg";
 
-    //kafka实际消费阈值
-    private int maxKafkaNum;
+    private KafkaServerClient kafkaClient;
 
-    // kafka中统计的数据数目
-    private int kafkaCount = 0;
-
-    // 全量区
-    private String wholeSpace;
-
-    // 增量区
-    private String increaseSpace;
-
+    //hbase句柄
     private HBaseDao hBaseDao;
 
-    //mongodb业务表名
-    private String tableName;
+    //规则引擎句柄
+    private KieSession kSession;
 
-    //hbase表信息
-    private Table wholeTable;
-    private Table increaseTable;
+    //当前已经加入的批处理表信息
+    private Set<String> tableSet = new HashSet<>();
 
-    public TaskManage(String tableName, int maxKafkaNum) {
-        wholeSpace = PropertyUtil.getProperty("whole.change.flag");
-        increaseSpace = PropertyUtil.getProperty("increase.change.flag");
+    //实时处理通道topic
+    private String realTimeTopic;
 
-        logger.info("当前需要流转数据的表: {}", tableName);
-        logger.info("当前kafka消费阈值: {}", maxKafkaNum);
+    //kafka生产者
+    private KafkaServerProducer kafkaProducer;
 
-        this.tableName = tableName;
-        this.maxKafkaNum = maxKafkaNum;
+    public TaskManage(KieSession kSession) {
 
         String quorum = PropertyUtil.getProperty("hbase.zookeeper.quorum");
         String clientPort = PropertyUtil.getProperty("hbase.zookeeper.property.clientPort");
         String master = PropertyUtil.getProperty("hbase.master");
         hBaseDao = new HBaseDao(quorum, clientPort, master);
-        createHBaseNameSpace(wholeSpace.split(":")[0]);
-        createHBaseNameSpace(increaseSpace.split(":")[0]);
 
-        try {
-            hBaseDao.createTable(tableName, new String[]{COLUMN_FAMILY});
+        //kafka订阅的总的数据总线
+        String topic = PropertyUtil.getProperty("kafka.data.topic");
+        realTimeTopic = PropertyUtil.getProperty("kafka.realtime.topic");
 
-            String wholeTableName = wholeSpace + tableName;
-            wholeTable = hBaseDao.getTable(wholeTableName);
+        //kafka消费者
+        kafkaClient = new KafkaServerClient(topic);
 
-            String increaseTableName = increaseSpace + tableName;
-            increaseTable = hBaseDao.getTable(increaseTableName);
+        //kafka生产者
+        kafkaProducer = new KafkaServerProducer();
 
-        } catch (Exception e) {
-            logger.error("创建表信息: ", e);
+        this.kSession = kSession;
+    }
+
+    // 消息转发
+    private void msgTransmit(String msg) {
+        //json转map
+        Map<String, String> dataMap = JsonUtil.jsonToObject(msg, Map.class);
+        if (dataMap == null) {
+            logger.error("当前数据转换json失败: {}", msg);
+            return;
         }
+        String topic = dataMap.get("head");
+        String value = dataMap.get("content");
+        String key = dataMap.get("_record_id");
 
-    }
-
-    public int getMaxKafkaNum() {
-        return maxKafkaNum;
-    }
-
-    public void setMaxKafkaNum(int maxKafkaNum) {
-        this.maxKafkaNum = maxKafkaNum;
-    }
-
-    public int getKafkaCount() {
-        return kafkaCount;
-    }
-
-    public void setKafkaCount(int kafkaCount) {
-        this.kafkaCount = kafkaCount;
-    }
-
-    //增加表数据数目
-    public void incKafkaCount(int num) {
-        kafkaCount += num;
-    }
-
-    //减少表数据数目
-    public void clearKafkaCount() {
-        kafkaCount = 0;
-    }
-
-    //创建HBase命名空间
-    private void createHBaseNameSpace(String hBaseNameSpace) {
-        try {
-            hBaseDao.createNamespace(hBaseNameSpace);
-        } catch (IOException e) {
-            logger.error("命名空间创建失败: {}", hBaseNameSpace);
-            logger.error("ERROR:", e);
-        }
-    }
-
-    //添加数据到增量区
-    public void addIncData(String rowkey, String value) {
-        try {
-            hBaseDao.addRow(increaseTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("增量区: {} {} ", tableName, rowkey);
-        } catch (Exception e) {
-            logger.error("写入数据异常:", e);
-        }
-    }
-
-    //添加数据到全量区
-    public void addWholeData(String rowkey, String value) {
-        try {
-            hBaseDao.addRow(wholeTable, rowkey, COLUMN_FAMILY, tableName, value);
-            logger.info("全量区: {} {} ", tableName, rowkey);
-        } catch (Exception e) {
-            logger.error("写入数据异常:", e);
-        }
-    }
-
-    //从增量区把数据存入全量区
-    public void transfer() {
-
-        if (kafkaCount < MAX_KAFKA_NUM) {
-            logger.error("数据量没有达到，不需要清洗...");
+        if (topic == null || value == null || key == null) {
+            logger.error("数据格式错误: {}", msg);
             return;
         }
 
-        logger.info("开始转移数据到全量区...table = {}", tableName);
-
-        //这里转移数据
-        try {
-            ResultScanner resultScanner = hBaseDao.getAllRows(increaseTable);
-            if (resultScanner == null) {
-                logger.error("ResultScanner获取失败..");
-                return;
-            }
-
-            for (Result result : resultScanner) {
-                for (Cell cell : result.rawCells()) {
-                    String rowkey = new String(CellUtil.cloneRow(cell));
-                    String value = new String(CellUtil.cloneValue(cell));
-
-                    // 把数据插入全量区
-                    addWholeData(rowkey, value);
-
-                    //从增量区删除数据
-                    hBaseDao.delRow(increaseTable, rowkey);
-                }
-            }
-        } catch (Exception e) {
-            logger.error("转移数据异常:", e);
+        //判断是否已经添加过数据
+        if (!tableSet.contains(topic)) {
+            kSession.insert(new DataTask(topic, hBaseDao));
+            tableSet.add(topic);
         }
 
-        //清空状态
-        clearKafkaCount();
-
-        logger.info("数据从增量区转移到全量区完成...table = {}", tableName);
+        //转发消息
+        kafkaProducer.send(topic, key, value);
     }
+
+    public void consumerData() {
+
+        //消费kafka数据
+        ConsumerRecords<String, String> records = kafkaClient.consumerData();
+        for (ConsumerRecord<String, String> record : records) {
+            String key = record.key();
+            String value = record.value();
+
+            //实时消息
+            if (Objects.equals(key, REAL_TIME_MSG)) {
+                kafkaProducer.send(realTimeTopic, key, value);
+                continue;
+            }
+
+            //数据消息
+            if (Objects.equals(key, DATA_MSG)) {
+                msgTransmit(value);
+                continue;
+            }
+
+            logger.error("无法处理的未知消息: key = {} value = {}", key, value);
+        }
+        logger.info("消费kafka数据...");
+    }
+
 }

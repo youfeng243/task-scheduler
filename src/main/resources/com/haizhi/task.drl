@@ -1,35 +1,39 @@
 import com.haizhi.manage.TaskManage
-import com.haizhi.kafka.KafkaClientConsumer
-import org.apache.kafka.clients.consumer.ConsumerRecords
-import org.apache.kafka.clients.consumer.ConsumerRecord
+import com.haizhi.manage.DataTask
 
-global com.haizhi.kafka.KafkaClientConsumer kafkaClient
-
-rule "kafka"
+//任务管理器
+rule "manage"
 when
-    task: TaskManage(kafkaCount < maxKafkaNum)
+    manage: TaskManage()
 then
-    ConsumerRecords<String, String> records = kafkaClient.runTask();
-    for (ConsumerRecord<String, String> record : records) {
-        String _record_id = record.key();
-        String docJson = record.value();
+    manage.consumerData();
+    update(manage)
+end
 
-        // 存入增量区
-        task.addIncData(_record_id, docJson);
-
-        // 计数增加
-        task.incKafkaCount(1);
-    }
-
+//消费数据
+rule "consumer"
+when
+    task: DataTask(status == STATUS_CONSUMER)
+then
+    task.consumerData();
     update(task)
 end
 
+//清洗数据
 rule "clean"
 when
-    task: TaskManage(kafkaCount >= maxKafkaNum)
+    task: DataTask(status == STATUS_CLEAN)
 then
-    //这里把HBase中的数据从增量区读出放入全量区
-    task.transfer();
+    //清理数据
+    task.cleanData();
+    update(task)
+end
 
+rule "cleaning"
+when
+    task: DataTask(status==STATUS_CLEANING)
+then
+    //休眠1秒 等待完成
+    Thread.sleep(100);
     update(task)
 end
