@@ -133,7 +133,6 @@ public class DataTask {
 
         //消费kafka数据
         ConsumerRecords<String, String> records = kafkaClient.consumerData();
-
         // 存入数据到增量区
         if (records.count() <= 0) {
             return;

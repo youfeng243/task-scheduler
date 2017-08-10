@@ -29,8 +29,16 @@ public class TaskScheduler {
         KieContainer kContainer = ks.getKieClasspathContainer();
         KieSession kSession = kContainer.newKieSession("session-task");
 
-        kSession.insert(new TaskManage(kSession));
-        kSession.fireUntilHalt();
-        logger.info("任务管理器运行结束...");
+        TaskManage manage = new TaskManage(kSession);
+        while(true) {
+            manage.consumerData();
+            manage.update();
+            kSession.fireAllRules();
+            logger.info("开始匹配所有规则...");
+        }
+
+//        kSession.insert(new TaskManage(kSession));
+//        kSession.fireUntilHalt();
+        //logger.info("任务管理器运行结束...");
     }
 }

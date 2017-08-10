@@ -2,13 +2,13 @@ import com.haizhi.manage.TaskManage
 import com.haizhi.manage.DataTask
 
 //任务管理器
-rule "manage"
-when
-    manage: TaskManage()
-then
-    manage.consumerData();
-    update(manage)
-end
+//rule "manage"
+//when
+//    manage: TaskManage()
+//then
+//    manage.consumerData();
+//    update(manage)
+//end
 
 //消费数据
 rule "consumer"
@@ -16,7 +16,7 @@ when
     task: DataTask(status == STATUS_CONSUMER)
 then
     task.consumerData();
-    update(task)
+    //update(task)
 end
 
 //清洗数据
@@ -26,14 +26,14 @@ when
 then
     //清理数据
     task.cleanData();
-    update(task)
+    //update(task)
 end
 
-rule "cleaning"
-when
-    task: DataTask(status==STATUS_CLEANING)
-then
-    //休眠1秒 等待完成
-    Thread.sleep(100);
-    update(task)
-end
+//rule "cleaning"
+//when
+//    task: DataTask(status==STATUS_CLEANING)
+//then
+//    //休眠1秒 等待完成
+//    Thread.sleep(100);
+//    update(task)
+//end

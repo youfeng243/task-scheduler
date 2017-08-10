@@ -227,7 +227,7 @@
                                 </program>
 
                                 <program>
-                                    <mainClass>com.haizhi.test.AppDataProducer</mainClass>
+                                    <mainClass>com.haizhi.test.TestProducer</mainClass>
                                     <name>AppDataProducer.sh</name>
                                 </program>
                             </programs>

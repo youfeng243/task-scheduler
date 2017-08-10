@@ -5,16 +5,17 @@ import com.haizhi.kafka.KafkaServerClient;
 import com.haizhi.kafka.KafkaServerProducer;
 import com.haizhi.util.JsonUtil;
 import com.haizhi.util.PropertyUtil;
+import javafx.util.Pair;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.rule.FactHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Created by youfeng on 2017/8/4.
@@ -38,14 +39,14 @@ public class TaskManage {
     //规则引擎句柄
     private KieSession kSession;
 
-    //当前已经加入的批处理表信息
-    private Set<String> tableSet = new HashSet<>();
-
     //实时处理通道topic
     private String realTimeTopic;
 
     //kafka生产者
     private KafkaServerProducer kafkaProducer;
+
+    //运行对象
+    private Map<String, Pair<FactHandle, DataTask>> factMap = new HashMap<>();
 
     public TaskManage(KieSession kSession) {
 
@@ -84,16 +85,21 @@ public class TaskManage {
             return;
         }
 
-        //转发消息
-        kafkaProducer.send(topic, key, value);
-
         //判断是否已经添加过数据
-        if (!tableSet.contains(topic)) {
-            tableSet.add(topic);
-            kSession.insert(new DataTask(topic, hBaseDao));
-            kSession.fireAllRules();
+        Pair<FactHandle, DataTask> factHandleDataTaskPair = factMap.get(topic);
+        if (factHandleDataTaskPair == null) {
+            DataTask dataTask = new DataTask(topic, hBaseDao);
+            FactHandle factHandle = kSession.insert(dataTask);
+            factHandleDataTaskPair = new Pair<>(factHandle, dataTask);
+
+            factMap.put(topic, factHandleDataTaskPair);
             logger.info("添加新的消息处理对象: {}", topic);
         }
+
+        //转发消息
+        kafkaProducer.send(topic, key, value);
+        //logger.info("当前发送消息: {} {} {}", topic, key, value);
+        //kSession.update(factHandleDataTaskPair.getKey(), factHandleDataTaskPair.getValue());
     }
 
     public void consumerData() {
@@ -122,4 +128,10 @@ public class TaskManage {
         //logger.info("消费kafka数据...");
     }
 
+    public void update() {
+        for (Map.Entry<String, Pair<FactHandle, DataTask>> entry: factMap.entrySet()) {
+            kSession.update(entry.getValue().getKey(), entry.getValue().getValue());
+        }
+        logger.info("更新状态完成....");
+    }
 }

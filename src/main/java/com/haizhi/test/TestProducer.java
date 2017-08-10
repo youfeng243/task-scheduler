@@ -24,9 +24,9 @@ import java.util.concurrent.TimeUnit;
  * Created by youfeng on 2017/8/4.
  * 工商表数据测试
  */
-public class AppDataProducer implements Callable<Void> {
+public class TestProducer implements Callable<Void> {
 
-    private static final Logger logger = LoggerFactory.getLogger(AppDataProducer.class);
+    private static final Logger logger = LoggerFactory.getLogger(TestProducer.class);
 
 
     static {
@@ -43,7 +43,7 @@ public class AppDataProducer implements Callable<Void> {
     // 数据库表名称
     private String tableName;
 
-    public AppDataProducer(String tableName) {
+    public TestProducer(String tableName) {
 
         this.tableName = tableName;
 
@@ -109,8 +109,8 @@ public class AppDataProducer implements Callable<Void> {
 
         ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
-        threadPool.submit(new AppDataProducer("enterprise_data_gov"));
-        threadPool.submit(new AppDataProducer("annual_reports"));
+        threadPool.submit(new TestProducer("enterprise_data_gov"));
+        threadPool.submit(new TestProducer("annual_reports"));
 
         threadPool.shutdown();
         logger.info("线程已经加载完成，等待结束...");
