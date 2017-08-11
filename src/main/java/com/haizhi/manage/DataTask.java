@@ -32,8 +32,10 @@ public class DataTask {
     //清洗状态
     public static final int STATUS_CLEAN = 1;
 
+    public static final int STATUS_CONSUMERING = 2;
+
     //清理中
-    public static final int STATUS_CLEANING = 2;
+    public static final int STATUS_CLEANING = 3;
 
     //HBase 列族
     private static final String COLUMN_FAMILY = "data";
@@ -129,47 +131,61 @@ public class DataTask {
 
 
     // 存储数据到增量区..
-    public void consumerData() {
+    public int consumerData() {
 
-        //消费kafka数据
-        ConsumerRecords<String, String> records = kafkaClient.consumerData();
-        int count = records.count();
-        if (count <= 0) {
-            return;
-        }
+        status = STATUS_CONSUMERING;
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
 
-        logger.info("开始消费数据: {} {}", tableName, count);
+                //消费kafka数据
+                ConsumerRecords<String, String> records = kafkaClient.consumerData();
+                int count = records.count();
+                if (count <= 0) {
+                    status = STATUS_CONSUMER;
+                    return;
+                }
 
-        List<Put> putList = new ArrayList<>();
-        for (ConsumerRecord<String, String> record : records) {
-            String _record_id = record.key();
-            String docJson = record.value();
+                logger.info("开始消费数据: {} {}", tableName, count);
 
-            Put put = new Put(Bytes.toBytes(_record_id));
-            put.addColumn(Bytes.toBytes(COLUMN_FAMILY),
-                    Bytes.toBytes(tableName),
-                    Bytes.toBytes(docJson));
-            putList.add(put);
-        }
+                List<Put> putList = new ArrayList<>();
+                for (ConsumerRecord<String, String> record : records) {
+                    String _record_id = record.key();
+                    String docJson = record.value();
 
-        try {
-            hBaseIncTable.put(putList);
-        } catch (IOException e) {
-            logger.error("存储HBase异常:", e);
-        }
+                    Put put = new Put(Bytes.toBytes(_record_id));
+                    put.addColumn(Bytes.toBytes(COLUMN_FAMILY),
+                            Bytes.toBytes(tableName),
+                            Bytes.toBytes(docJson));
+                    putList.add(put);
+                }
 
-        currentNum += records.count();
-        if (currentNum >= maxConsumerNum) {
-            // 如果消费数量达到一定程度，则进入清洗流程...
-            status = STATUS_CLEAN;
-            logger.info("{} 数据量超过 {} 进入清洗状态", tableName, currentNum);
-        }
+                try {
+                    hBaseIncTable.put(putList);
+                } catch (IOException e) {
+                    logger.error("存储HBase异常:", e);
+                }
+
+                currentNum += records.count();
+                if (currentNum >= maxConsumerNum) {
+                    // 如果消费数量达到一定程度，则进入清洗流程...
+                    status = STATUS_CLEAN;
+                    logger.info("{} 数据量超过 {} 进入清洗状态", tableName, currentNum);
+                } else {
+                    //如果没达到数据量则继续消费
+                    status = STATUS_CONSUMER;
+                }
+            }
+        });
+
+        return status;
     }
 
     // 清洗流程
-    public void cleanData() {
+    public int cleanData() {
 
         logger.info("进入清洗状态: {}", tableName);
+        status = STATUS_CLEANING;
         executorService.submit(new Runnable() {
             @Override
             public void run() {
@@ -226,8 +242,7 @@ public class DataTask {
                         tableName, currentNum, status);
             }
         });
-        // 清理中..
-        status = STATUS_CLEANING;
+        return status;
     }
 
     public static void main(String... args) {
