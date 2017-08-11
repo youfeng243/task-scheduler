@@ -106,7 +106,7 @@ public class TaskManage {
 
         //转发消息
         kafkaProducer.send(topic, key, value);
-        //logger.info("当前Producer发送消息: {} {} {}", topic, key, value);
+        logger.info("当前Producer发送消息: {} {}", topic, key);
         //kSession.update(factHandleDataTaskPair.getKey(), factHandleDataTaskPair.getValue());
     }
 
@@ -128,7 +128,6 @@ public class TaskManage {
             //数据消息
             if (Objects.equals(key, DATA_MSG)) {
                 msgTransmit(kafkaProducer, value);
-                logger.info("转发数据消息: {} : {}", key, value);
                 continue;
             }
 
