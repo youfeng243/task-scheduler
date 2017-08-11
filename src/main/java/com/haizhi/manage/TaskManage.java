@@ -149,9 +149,10 @@ public class TaskManage {
 
                 factMap.put(topic, factHandleDataTaskPair);
                 logger.info("添加新的消息处理对象: {}", topic);
+                //kSession.update(factHandle, dataTask);
+                //logger.info("规则激活完成...{}", topic);
             }
         }
-
 
         for (Map.Entry<String, Pair<FactHandle, DataTask>> entry : factMap.entrySet()) {
             kSession.update(entry.getValue().getKey(), entry.getValue().getValue());

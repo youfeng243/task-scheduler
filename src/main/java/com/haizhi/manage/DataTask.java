@@ -32,10 +32,14 @@ public class DataTask {
     //清洗状态
     public static final int STATUS_CLEAN = 1;
 
+    // 消费中
     public static final int STATUS_CONSUMERING = 2;
 
     //清理中
     public static final int STATUS_CLEANING = 3;
+
+    //工作状态
+    public static final int STATUS_WORKING = 100;
 
     //HBase 列族
     private static final String COLUMN_FAMILY = "data";
@@ -133,7 +137,7 @@ public class DataTask {
     // 存储数据到增量区..
     public int consumerData() {
 
-        status = STATUS_CONSUMERING;
+        status = STATUS_WORKING;
         executorService.submit(new Runnable() {
             @Override
             public void run() {
@@ -185,7 +189,7 @@ public class DataTask {
     public int cleanData() {
 
         logger.info("进入清洗状态: {}", tableName);
-        status = STATUS_CLEANING;
+        status = STATUS_WORKING;
         executorService.submit(new Runnable() {
             @Override
             public void run() {

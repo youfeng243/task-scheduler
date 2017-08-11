@@ -36,7 +36,7 @@ public class TaskScheduler {
             kSession.fireAllRules();
             //logger.info("匹配规则完成..");
             try {
-                Thread.sleep(1000);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 logger.error("ERROR:", e);
             }

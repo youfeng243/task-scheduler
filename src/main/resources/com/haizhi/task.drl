@@ -28,8 +28,17 @@ then
     //System.out.println("开始执行清洗状态");
     //清理数据
     task.cleanData();
+
     //System.out.println("执行完成清洗状态");
 end
+
+//rule "working"
+//when
+//    task: DataTask(status==STATUS_WORKING)
+//then
+//    Thread.sleep(100);
+//    update(task)
+//end
 
 //rule "cleaning"
 //when
