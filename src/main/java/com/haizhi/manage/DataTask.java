@@ -133,12 +133,12 @@ public class DataTask {
 
         //消费kafka数据
         ConsumerRecords<String, String> records = kafkaClient.consumerData();
-        // 存入数据到增量区
-        if (records.count() <= 0) {
+        int count = records.count();
+        if (count <= 0) {
             return;
         }
 
-        logger.info("开始消费数据: {}", tableName);
+        logger.info("开始消费数据: {} {}", tableName, count);
 
         List<Put> putList = new ArrayList<>();
         for (ConsumerRecord<String, String> record : records) {
@@ -162,7 +162,7 @@ public class DataTask {
         if (currentNum >= maxConsumerNum) {
             // 如果消费数量达到一定程度，则进入清洗流程...
             status = STATUS_CLEAN;
-            logger.info("数据量超过 {} 进入清洗状态", currentNum);
+            logger.info("{} 数据量超过 {} 进入清洗状态", tableName, currentNum);
         }
     }
 
@@ -214,7 +214,7 @@ public class DataTask {
                         logger.error("数据转移失败:", e);
                     }
 
-                    logger.info("数据清洗完成...");
+                    logger.info("{} 数据清洗完成...", tableName);
                 } while (false);
 
 
@@ -222,10 +222,25 @@ public class DataTask {
                 currentNum = 0;
                 status = STATUS_CONSUMER;
 
-                logger.info("清理状态完成..{}", tableName);
+                logger.info("清理状态完成..topic = {} currentNum = {} status = {}",
+                        tableName, currentNum, status);
             }
         });
         // 清理中..
         status = STATUS_CLEANING;
+    }
+
+    public static void main(String... args) {
+        PropertyUtil.loadProperties("application.properties");
+        KafkaServerClient kafkaClient = new KafkaServerClient("enterprise_data_gov");
+        while (true) {
+            ConsumerRecords<String, String> records = kafkaClient.consumerData();
+            for (ConsumerRecord<String, String> record : records) {
+                String _record_id = record.key();
+                String docJson = record.value();
+                System.out.println("测试消费端: + " + _record_id + " : " + docJson);
+            }
+        }
+
     }
 }

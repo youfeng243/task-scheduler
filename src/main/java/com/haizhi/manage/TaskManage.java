@@ -5,6 +5,7 @@ import com.haizhi.kafka.KafkaServerClient;
 import com.haizhi.kafka.KafkaServerProducer;
 import com.haizhi.util.JsonUtil;
 import com.haizhi.util.PropertyUtil;
+import io.netty.util.internal.ConcurrentSet;
 import javafx.util.Pair;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -13,9 +14,11 @@ import org.kie.api.runtime.rule.FactHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Created by youfeng on 2017/8/4.
@@ -43,10 +46,13 @@ public class TaskManage {
     private String realTimeTopic;
 
     //kafka生产者
-    private KafkaServerProducer kafkaProducer;
+    //private KafkaServerProducer kafkaProducer;
 
     //运行对象
-    private Map<String, Pair<FactHandle, DataTask>> factMap = new HashMap<>();
+    private ConcurrentMap<String, Pair<FactHandle, DataTask>> factMap = new ConcurrentHashMap<>();
+
+    //准备加入启动对象
+    private ConcurrentSet<String> topicSet = new ConcurrentSet<>();
 
     public TaskManage(KieSession kSession) {
 
@@ -62,14 +68,23 @@ public class TaskManage {
         //kafka消费者
         kafkaClient = new KafkaServerClient(topic);
 
-        //kafka生产者
-        kafkaProducer = new KafkaServerProducer();
-
         this.kSession = kSession;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //kafka生产者
+                KafkaServerProducer kafkaProducer = new KafkaServerProducer();
+                while (true) {
+                    consumerData(kafkaProducer);
+                }
+            }
+        }).start();
+
     }
 
     // 消息转发
-    private void msgTransmit(String msg) {
+    private void msgTransmit(KafkaServerProducer kafkaProducer, String msg) {
         //json转map
         Map<String, String> dataMap = JsonUtil.jsonToObject(msg, Map.class);
         if (dataMap == null) {
@@ -85,24 +100,17 @@ public class TaskManage {
             return;
         }
 
-        //判断是否已经添加过数据
-        Pair<FactHandle, DataTask> factHandleDataTaskPair = factMap.get(topic);
-        if (factHandleDataTaskPair == null) {
-            DataTask dataTask = new DataTask(topic, hBaseDao);
-            FactHandle factHandle = kSession.insert(dataTask);
-            factHandleDataTaskPair = new Pair<>(factHandle, dataTask);
-
-            factMap.put(topic, factHandleDataTaskPair);
-            logger.info("添加新的消息处理对象: {}", topic);
+        if (!topicSet.contains(topic)) {
+            topicSet.add(topic);
         }
 
         //转发消息
         kafkaProducer.send(topic, key, value);
-        //logger.info("当前发送消息: {} {} {}", topic, key, value);
+        //logger.info("当前Producer发送消息: {} {} {}", topic, key, value);
         //kSession.update(factHandleDataTaskPair.getKey(), factHandleDataTaskPair.getValue());
     }
 
-    public void consumerData() {
+    private void consumerData(KafkaServerProducer kafkaProducer) {
 
         //消费kafka数据
         ConsumerRecords<String, String> records = kafkaClient.consumerData();
@@ -119,7 +127,8 @@ public class TaskManage {
 
             //数据消息
             if (Objects.equals(key, DATA_MSG)) {
-                msgTransmit(value);
+                msgTransmit(kafkaProducer, value);
+                //logger.info("转发数据消息: {} : {}", key, value);
                 continue;
             }
 
@@ -129,9 +138,24 @@ public class TaskManage {
     }
 
     public void update() {
-        for (Map.Entry<String, Pair<FactHandle, DataTask>> entry: factMap.entrySet()) {
+
+        for (Iterator<String> it = topicSet.iterator(); it.hasNext(); ) {
+            String topic = it.next();
+            Pair<FactHandle, DataTask> factHandleDataTaskPair = factMap.get(topic);
+            if (factHandleDataTaskPair == null) {
+                DataTask dataTask = new DataTask(topic, hBaseDao);
+                FactHandle factHandle = kSession.insert(dataTask);
+                factHandleDataTaskPair = new Pair<>(factHandle, dataTask);
+
+                factMap.put(topic, factHandleDataTaskPair);
+                logger.info("添加新的消息处理对象: {}", topic);
+            }
+        }
+
+
+        for (Map.Entry<String, Pair<FactHandle, DataTask>> entry : factMap.entrySet()) {
             kSession.update(entry.getValue().getKey(), entry.getValue().getValue());
         }
-        logger.info("更新状态完成....");
+        //logger.info("更新状态完成....");
     }
 }

@@ -94,11 +94,11 @@ public class TestProducer implements Callable<Void> {
             producer.send(new ProducerRecord<>(topic, "data_msg", getDataMsg(tableName, document.toJson(), _record_id)));
             producer.send(new ProducerRecord<>(topic, "event_msg", "test_msg"));
 
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                logger.error("休眠异常:", e);
-            }
+//            try {
+//                Thread.sleep(3000);
+//            } catch (InterruptedException e) {
+//                logger.error("休眠异常:", e);
+//            }
         }
 
         cursor.close();

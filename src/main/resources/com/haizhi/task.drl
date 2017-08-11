@@ -15,8 +15,9 @@ rule "consumer"
 when
     task: DataTask(status == STATUS_CONSUMER)
 then
+    //System.out.println("开始执行kafka状态");
     task.consumerData();
-    //update(task)
+    //System.out.println("执行完成kafka状态");
 end
 
 //清洗数据
@@ -24,9 +25,10 @@ rule "clean"
 when
     task: DataTask(status == STATUS_CLEAN)
 then
+    //System.out.println("开始执行清洗状态");
     //清理数据
     task.cleanData();
-    //update(task)
+    //System.out.println("执行完成清洗状态");
 end
 
 //rule "cleaning"

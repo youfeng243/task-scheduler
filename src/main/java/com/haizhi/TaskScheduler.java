@@ -30,11 +30,16 @@ public class TaskScheduler {
         KieSession kSession = kContainer.newKieSession("session-task");
 
         TaskManage manage = new TaskManage(kSession);
-        while(true) {
-            manage.consumerData();
+        while (true) {
+            //logger.info("开始匹配所有规则...");
             manage.update();
             kSession.fireAllRules();
-            logger.info("开始匹配所有规则...");
+            //logger.info("匹配规则完成..");
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                logger.error("ERROR:", e);
+            }
         }
 
 //        kSession.insert(new TaskManage(kSession));

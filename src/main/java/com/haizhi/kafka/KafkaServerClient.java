@@ -6,6 +6,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.util.Collections;
 import java.util.Properties;
+import java.util.UUID;
 
 /**
  * Created by youfeng on 2017/8/10.
@@ -20,7 +21,7 @@ public class KafkaServerClient {
     public KafkaServerClient(String topic) {
         Properties props = new Properties();
         props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
-        props.put("group.id", topic);
+        props.put("group.id", topic + UUID.randomUUID().toString());
         props.put("session.timeout.ms", "30000");
         props.put("auto.offset.reset", "earliest");
         props.put("key.deserializer", PropertyUtil.getProperty("key.deserializer"));
