@@ -131,7 +131,7 @@ public class TaskManage {
                 continue;
             }
 
-            logger.error("无法处理的未知消息: key = {} value = {}", key, value);
+            logger.warn("无法处理的未知消息: key = {} value = {}", key, value);
         }
         //logger.info("消费kafka数据...");
     }
