@@ -23,7 +23,7 @@ public class KafkaServerClient {
         props.put("bootstrap.servers", PropertyUtil.getProperty("kafka.servers"));
         props.put("group.id", topic + UUID.randomUUID().toString());
         props.put("session.timeout.ms", "30000");
-        props.put("auto.offset.reset", "earliest");
+        //props.put("auto.offset.reset", "earliest");
         props.put("key.deserializer", PropertyUtil.getProperty("key.deserializer"));
         props.put("value.deserializer", PropertyUtil.getProperty("value.deserializer"));
         props.put("enable.auto.commit", "false");
