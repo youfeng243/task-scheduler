@@ -10,20 +10,25 @@ start() {
 		return 1
 	fi
 
-    sh mvnw clean
-    [ ! $? -eq 0 ] && echo "maven clean fail.." && return -1
+	# 打包安装
+	package
 
-    sh mvnw package
-    [ ! $? -eq 0 ] && echo "maven package fail.." && return -1
-
-    alias cp=cp
-    cp -rf target/${project}/* .
+#    sh mvnw clean
+#    [ ! $? -eq 0 ] && echo "maven clean fail.." && return -1
+#
+#    sh mvnw package
+#    [ ! $? -eq 0 ] && echo "maven package fail.." && return -1
+#
+#    alias cp=cp
+#    cp -rf target/${project}/* .
     cd bin
     nohup sh startup.sh > /dev/null 2>&1 &
     echo "${project} start success..."
 }
 
 package() {
+
+    rm -rf bin conf lib target
 
     sh mvnw clean
     [ ! $? -eq 0 ] && echo "maven clean fail.." && return -1
