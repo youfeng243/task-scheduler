@@ -82,8 +82,13 @@ public class TestProducer implements Callable<Void> {
 
         Producer<String, String> producer = new KafkaProducer<>(props);
 
+        int count = 0;
         MongoCursor<Document> cursor = appDataDatabase.getCollection(tableName).find().iterator();
         while (cursor.hasNext()) {
+            count += 1;
+            if (count >= 1000000) {
+                break;
+            }
 
             Document document = cursor.next();
 
@@ -92,7 +97,9 @@ public class TestProducer implements Callable<Void> {
             logger.info("{} : {} ", tableName, _record_id);
 
             producer.send(new ProducerRecord<>(topic, "data_msg", getDataMsg(tableName, document.toJson(), _record_id)));
-            producer.send(new ProducerRecord<>(topic, "event_msg", "test_msg"));
+            if (count % 100 == 0) {
+                producer.send(new ProducerRecord<>(topic, "event_msg", _record_id));
+            }
 
 //            try {
 //                Thread.sleep(3000);
@@ -102,6 +109,7 @@ public class TestProducer implements Callable<Void> {
         }
 
         cursor.close();
+        logger.info("数据传输完成 {} ", tableName);
         return null;
     }
 
