@@ -9,8 +9,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.bson.Document;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,16 +24,13 @@ import java.util.concurrent.TimeUnit;
  */
 public class TestProducer implements Callable<Void> {
 
-    private static final Logger logger = LoggerFactory.getLogger(TestProducer.class);
+    //private static final Logger logger = LoggerFactory.getLogger(TestProducer.class);
 
 
     static {
         //先装载配置信息
         PropertyUtil.loadProperties("application.properties");
     }
-
-    //数据业务表mongodb句柄
-    private Mongo appDataMongo;
 
     // 数据库
     private MongoDatabase appDataDatabase;
@@ -48,7 +43,7 @@ public class TestProducer implements Callable<Void> {
         this.tableName = tableName;
 
         //初始化数据表句柄
-        appDataMongo = new Mongo(PropertyUtil.getProperty("data.mongo.host"),
+        Mongo appDataMongo = new Mongo(PropertyUtil.getProperty("data.mongo.host"),
                 PropertyUtil.getProperty("data.mongo.username"),
                 PropertyUtil.getProperty("data.mongo.password"),
                 PropertyUtil.getProperty("data.mongo.auth.db"));
@@ -94,7 +89,7 @@ public class TestProducer implements Callable<Void> {
 
             String _record_id = document.getString("_record_id");
 
-            logger.info("{} : {} ", tableName, _record_id);
+            System.out.println(tableName + " : " + _record_id);
 
             producer.send(new ProducerRecord<>(topic, "data_msg", getDataMsg(tableName, document.toJson(), _record_id)));
             if (count % 100 == 0) {
@@ -109,7 +104,7 @@ public class TestProducer implements Callable<Void> {
         }
 
         cursor.close();
-        logger.info("数据传输完成 {} ", tableName);
+        System.out.println("数据传输完成 " + tableName);
         return null;
     }
 
@@ -121,12 +116,12 @@ public class TestProducer implements Callable<Void> {
         threadPool.submit(new TestProducer("annual_reports"));
 
         threadPool.shutdown();
-        logger.info("线程已经加载完成，等待结束...");
+        //logger.info("线程已经加载完成，等待结束...");
         try {
             threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
-            logger.info("线程池结束正常..");
+            //logger.info("线程池结束正常..");
         } catch (InterruptedException e) {
-            logger.error("线程被中断: ", e);
+            //logger.error("线程被中断: ", e);
         }
     }
 
