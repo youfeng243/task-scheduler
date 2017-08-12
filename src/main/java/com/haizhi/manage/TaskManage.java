@@ -106,7 +106,7 @@ public class TaskManage {
 
         //转发消息
         kafkaProducer.send(topic, key, value);
-        logger.info("当前Producer发送消息: {} {}", topic, key);
+        logger.debug("当前Producer发送消息: {} {}", topic, key);
         //kSession.update(factHandleDataTaskPair.getKey(), factHandleDataTaskPair.getValue());
     }
 
@@ -121,7 +121,7 @@ public class TaskManage {
             //实时消息
             if (Objects.equals(key, REAL_TIME_MSG)) {
                 kafkaProducer.send(realTimeTopic, key, value);
-                logger.info("转发实时消息: {} : {}", key, value);
+                logger.debug("转发实时消息: {} : {}", key, value);
                 continue;
             }
 
