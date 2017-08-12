@@ -28,7 +28,7 @@ start() {
 
 package() {
 
-    rm -rf bin conf lib target
+    rm -rf conf lib target
 
     sh mvnw clean
     [ ! $? -eq 0 ] && echo "maven clean fail.." && return -1
