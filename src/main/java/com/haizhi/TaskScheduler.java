@@ -25,6 +25,9 @@ public class TaskScheduler {
 
         logger.info("任务管理器开始执行...");
 
+        // 数据更新时间
+        int updateTime = PropertyUtil.getInt("scheduler.update.time");
+
         KieServices ks = KieServices.Factory.get();
         KieContainer kContainer = ks.getKieClasspathContainer();
         KieSession kSession = kContainer.newKieSession("session-task");
@@ -36,7 +39,7 @@ public class TaskScheduler {
             kSession.fireAllRules();
             //logger.info("匹配规则完成..");
             try {
-                Thread.sleep(500);
+                Thread.sleep(updateTime);
             } catch (InterruptedException e) {
                 logger.error("ERROR:", e);
             }

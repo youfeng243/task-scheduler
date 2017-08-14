@@ -138,8 +138,7 @@ public class TaskManage {
 
     public void update() {
 
-        for (Iterator<String> it = topicSet.iterator(); it.hasNext(); ) {
-            String topic = it.next();
+        for (String topic : topicSet) {
             Pair<FactHandle, DataTask> factHandleDataTaskPair = factMap.get(topic);
             if (factHandleDataTaskPair == null) {
                 DataTask dataTask = new DataTask(topic, hBaseDao);
