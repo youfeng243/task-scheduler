@@ -138,47 +138,44 @@ public class DataTask {
     public int consumerData() {
 
         status = STATUS_WORKING;
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
+        executorService.submit(() -> {
 
-                //消费kafka数据
-                ConsumerRecords<String, String> records = kafkaClient.consumerData();
-                int count = records.count();
-                if (count <= 0) {
-                    status = STATUS_CONSUMER;
-                    return;
-                }
+            //消费kafka数据
+            ConsumerRecords<String, String> records = kafkaClient.consumerData();
+            int count = records.count();
+            if (count <= 0) {
+                status = STATUS_CONSUMER;
+                return;
+            }
 
-                logger.info("开始消费数据: {} {}", tableName, count);
+            logger.info("开始消费数据: {} {}", tableName, count);
 
-                List<Put> putList = new ArrayList<>();
-                for (ConsumerRecord<String, String> record : records) {
-                    String _record_id = record.key();
-                    String docJson = record.value();
+            List<Put> putList = new ArrayList<>();
+            for (ConsumerRecord<String, String> record : records) {
+                String _record_id = record.key();
+                String docJson = record.value();
 
-                    Put put = new Put(Bytes.toBytes(_record_id));
-                    put.addColumn(Bytes.toBytes(COLUMN_FAMILY),
-                            Bytes.toBytes(tableName),
-                            Bytes.toBytes(docJson));
-                    putList.add(put);
-                }
+                Put put = new Put(Bytes.toBytes(_record_id));
+                put.addColumn(Bytes.toBytes(COLUMN_FAMILY),
+                        Bytes.toBytes(tableName),
+                        Bytes.toBytes(docJson));
+                putList.add(put);
+            }
 
-                try {
-                    hBaseIncTable.put(putList);
-                } catch (IOException e) {
-                    logger.error("存储HBase异常:", e);
-                }
+            try {
+                hBaseIncTable.put(putList);
+            } catch (IOException e) {
+                logger.error("存储HBase异常:", e);
+            }
 
-                currentNum += records.count();
-                if (currentNum >= maxConsumerNum) {
-                    // 如果消费数量达到一定程度，则进入清洗流程...
-                    status = STATUS_CLEAN;
-                    logger.info("{} 数据量超过 {} 进入清洗状态", tableName, currentNum);
-                } else {
-                    //如果没达到数据量则继续消费
-                    status = STATUS_CONSUMER;
-                }
+            currentNum += records.count();
+            if (currentNum >= maxConsumerNum) {
+                // 如果消费数量达到一定程度，则进入清洗流程...
+                status = STATUS_CLEAN;
+                logger.info("{} 数据量超过 {} 进入清洗状态", tableName, currentNum);
+            } else {
+                //如果没达到数据量则继续消费
+                status = STATUS_CONSUMER;
             }
         });
 
@@ -190,61 +187,58 @@ public class DataTask {
 
         logger.info("进入清洗状态: {}", tableName);
         status = STATUS_WORKING;
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                do {
+        executorService.submit(() -> {
+            do {
 
-                    ResultScanner resultScanner = null;
+                ResultScanner resultScanner = null;
 
-                    try {
-                        resultScanner = hBaseDao.getAllRows(hBaseIncTable);
-                    } catch (Exception e) {
-                        logger.error("读取增量区数据出错:");
+                try {
+                    resultScanner = hBaseDao.getAllRows(hBaseIncTable);
+                } catch (Exception e) {
+                    logger.error("读取增量区数据出错:");
+                }
+                if (resultScanner == null) {
+                    logger.error("ResultScanner获取失败..");
+                    break;
+                }
+
+                List<Put> putList = new ArrayList<>();
+                List<Delete> deleteList = new ArrayList<>();
+                for (Result result : resultScanner) {
+                    for (Cell cell : result.rawCells()) {
+                        String rowKey = new String(CellUtil.cloneRow(cell));
+                        String value = new String(CellUtil.cloneValue(cell));
+                        String key = new String(CellUtil.cloneQualifier(cell));
+
+                        Put put = new Put(Bytes.toBytes(rowKey));
+                        put.addColumn(Bytes.toBytes(COLUMN_FAMILY),
+                                Bytes.toBytes(key),
+                                Bytes.toBytes(value));
+                        putList.add(put);
+
+                        Delete delete = new Delete(Bytes.toBytes(rowKey));
+                        deleteList.add(delete);
                     }
-                    if (resultScanner == null) {
-                        logger.error("ResultScanner获取失败..");
-                        break;
-                    }
+                }
 
-                    List<Put> putList = new ArrayList<>();
-                    List<Delete> deleteList = new ArrayList<>();
-                    for (Result result : resultScanner) {
-                        for (Cell cell : result.rawCells()) {
-                            String rowKey = new String(CellUtil.cloneRow(cell));
-                            String value = new String(CellUtil.cloneValue(cell));
-                            String key = new String(CellUtil.cloneQualifier(cell));
+                //插入全量区数据
+                try {
+                    hBaseFullTable.put(putList);
+                    hBaseIncTable.delete(deleteList);
+                } catch (IOException e) {
+                    logger.error("数据转移失败:", e);
+                }
 
-                            Put put = new Put(Bytes.toBytes(rowKey));
-                            put.addColumn(Bytes.toBytes(COLUMN_FAMILY),
-                                    Bytes.toBytes(key),
-                                    Bytes.toBytes(value));
-                            putList.add(put);
-
-                            Delete delete = new Delete(Bytes.toBytes(rowKey));
-                            deleteList.add(delete);
-                        }
-                    }
-
-                    //插入全量区数据
-                    try {
-                        hBaseFullTable.put(putList);
-                        hBaseIncTable.delete(deleteList);
-                    } catch (IOException e) {
-                        logger.error("数据转移失败:", e);
-                    }
-
-                    logger.info("{} 数据清洗完成...", tableName);
-                } while (false);
+                logger.info("{} 数据清洗完成...", tableName);
+            } while (false);
 
 
-                //清理状态
-                currentNum = 0;
-                status = STATUS_CONSUMER;
+            //清理状态
+            currentNum = 0;
+            status = STATUS_CONSUMER;
 
-                logger.info("清理状态完成..topic = {} currentNum = {} status = {}",
-                        tableName, currentNum, status);
-            }
+            logger.info("清理状态完成..topic = {} currentNum = {} status = {}",
+                    tableName, currentNum, status);
         });
         return status;
     }

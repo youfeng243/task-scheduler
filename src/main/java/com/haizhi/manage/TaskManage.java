@@ -70,14 +70,11 @@ public class TaskManage {
 
         this.kSession = kSession;
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                //kafka生产者
-                KafkaServerProducer kafkaProducer = new KafkaServerProducer();
-                while (true) {
-                    consumerData(kafkaProducer);
-                }
+        new Thread(() -> {
+            //kafka生产者
+            KafkaServerProducer kafkaProducer = new KafkaServerProducer();
+            while (true) {
+                consumerData(kafkaProducer);
             }
         }).start();
 
